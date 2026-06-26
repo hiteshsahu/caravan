@@ -1,0 +1,40 @@
+services:
+  slurmctld:
+    build: .
+    image: caravan-slurm:latest
+    command: ["slurmctld"]
+    hostname: slurmctld
+    container_name: slurmctld
+    volumes:
+      - ./slurm.conf:/etc/slurm/slurm.conf:ro
+      - ./gres.conf:/etc/slurm/gres.conf:ro
+      - slurm_state:/var/spool/slurmctld
+    networks: [slurm]
+
+  c1:
+    image: caravan-slurm:latest
+    command: ["slurmd"]
+    hostname: c1
+    container_name: c1
+    depends_on: [slurmctld]
+    volumes:
+      - ./slurm.conf:/etc/slurm/slurm.conf:ro
+      - ./gres.conf:/etc/slurm/gres.conf:ro
+    networks: [slurm]
+
+  c2:
+    image: caravan-slurm:latest
+    command: ["slurmd"]
+    hostname: c2
+    container_name: c2
+    depends_on: [slurmctld]
+    volumes:
+      - ./slurm.conf:/etc/slurm/slurm.conf:ro
+      - ./gres.conf:/etc/slurm/gres.conf:ro
+    networks: [slurm]
+
+networks:
+  slurm:
+
+volumes:
+  slurm_state:
