@@ -11,7 +11,10 @@
       "Bash(export CARAVAN_ENGINE=podman)",
       "Bash(./caravan cluster *)",
       "Bash(./caravan submit *)",
-      "Bash(podman exec *)"
+      "Bash(podman exec *)",
+      "Bash(podman machine *)",
+      "Bash(podman ps *)",
+      "Bash(gofmt -l .)"
     ]
   }
 }

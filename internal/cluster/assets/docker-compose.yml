@@ -8,6 +8,7 @@ services:
     volumes:
       - ./slurm.conf:/etc/slurm/slurm.conf:ro
       - ./gres.conf:/etc/slurm/gres.conf:ro
+      - ./cgroup.conf:/etc/slurm/cgroup.conf:ro
       - slurm_state:/var/spool/slurmctld
     networks: [slurm]
     restart: unless-stopped
@@ -31,6 +32,7 @@ services:
     volumes:
       - ./slurm.conf:/etc/slurm/slurm.conf:ro
       - ./gres.conf:/etc/slurm/gres.conf:ro
+      - ./cgroup.conf:/etc/slurm/cgroup.conf:ro
     networks: [slurm]
 
   c2:
@@ -47,6 +49,7 @@ services:
     volumes:
       - ./slurm.conf:/etc/slurm/slurm.conf:ro
       - ./gres.conf:/etc/slurm/gres.conf:ro
+      - ./cgroup.conf:/etc/slurm/cgroup.conf:ro
     networks: [slurm]
 
 networks:

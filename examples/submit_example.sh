@@ -5,6 +5,6 @@
 #SBATCH --ntasks=1
 
 echo "Hello from Caravan job on $(hostname)"
-sleep 5
+sleep 10
 
 echo "Done"

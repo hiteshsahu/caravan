@@ -23,12 +23,10 @@ Its completing project to:
 ## Quick start
 
 ```bash
-# Run the built-in CLI directly from source
-go run . cluster up
-
-go run . cluster status
-
-go run . cluster down
+caravan cluster up        # build + start (controller + 2 fake-GPU nodes)
+caravan cluster down      # stop (-v to also wipe volumes)
+caravan cluster status    # container state + sinfo
+caravan submit <script>   # stream a script into sbatch on the controller
 ```
 
 ## Cluster up
@@ -45,30 +43,6 @@ go run . cluster down
   On Podman it prefers `podman-compose` if
   installed, else `podman compose`. Override either:
 
- 
-![](./img/illustration.jpeg)
-
-
-### 1. Using Released Binary
-
-```bash
-go install github.com/hiteshsahu/caravan@latest
-```
-
-Setup Slurm cluster:
-
-```bash
-# builds the image, starts controller + 2 GPU nodes
-caravan cluster up
-
-# container state, then `sinfo`
-caravan cluster status
-
-# stop the cluster
-caravan cluster down
-# stop and wipe state
-caravan cluster down -v
-```
 
 ### Using Podman
 
@@ -86,76 +60,66 @@ On macOS make sure the Podman VM is running first:
 ```bash
 podman machine start
 ```
+ 
+---
+
+# How it works
+
+###  Get the CLI  📦
+
+There are 2 ways to get caravan cli
+
+### 1. Using Released Binary
+Fetch release build:
+
+```bash
+  go install github.com/hiteshsahu/caravan@latest
+```
+
+### 2. Build Locally
+Build using local source:
+
+```bash
+  # build local sources
+  go build -o caravan .
+  
+  # Verify 
+  ./caravan
+```
+
+![Caravan Batch](./img/illustration.jpeg)
+
+## Start Your Caravan
+
+Once you have CLI you can start cluster and submit jobs
+
+These steps are for local binary. Replace `./caravan` with `caravan` and you can use them for released CLI
+
+
+### ▶️ Start Cluster 
+
+Writes an embedded Slurm scaffold to `~/.caravan/cluster` and runs `docker`/`podman compose` against it.
+
+
+```bash
+  ./caravan cluster up
+
+  # override the scaffold location with `CARAVAN_DIR`
+  CARAVAN_DIR=/tmp/caravan/cluster ./caravan cluster up
+```
+
+- The two compute nodes advertise `gpu:4` each as **fake, count-only GPUs** 
+- The real GPU scheduling, no hardware needed (no `nvidia-smi` telemetry).
 
 ---
 
-### 2. Using Local Binary
-
-
-### Build Binary
-Build the binary after changes in Go files:
+### 📋 Check Status
+Print container state, then `sinfo`
 
 ```bash
-go build -o caravan .
-```
-
-### Start Cluster
-Start the cluster from the local binary:
-
-```bash
-./caravan cluster up
-```
-
-`caravan cluster up` writes an embedded Slurm scaffold to `~/.caravan/cluster` and runs `docker`/`podman compose` against it.
-
-You can override the scaffold location with `CARAVAN_DIR`:
-
-```bash
-CARAVAN_DIR=/tmp/caravan/cluster ./caravan cluster up
-```
-
-The two compute nodes advertise `gpu:4` each as **fake, count-only GPUs** — real GPU scheduling, no hardware needed (no `nvidia-smi` telemetry).
-
-
-
-### **Submit a job**
-
-Create a simple job script (see `examples/submit_example.sh`) and submit it:
-
-```bash
-# start the cluster first
-./caravan cluster up
-
-# submit the example script
-./caravan submit examples/submit_example.sh
-
-```
-
-
-<details>
-<summary>Output:</summary>
-  → submitting examples/submit_example.sh to local Slurm cluster in /Users/hitesh/.caravan/cluster
-  #!/usr/bin/env bash
-  #SBATCH --job-name=caravan-test
-  #SBATCH --output=caravan-test.out
-  #SBATCH --time=00:01:00
-  #SBATCH --ntasks=1
-
-echo "Hello from Caravan job on $(hostname)"
-sleep 5
-
-echo "Done"
-</details>
-
-### **Check Status**
-
-```bash
-
-# check job status
-./caravan cluster status
-
-podman exec slurmctld squeue
-```
+  # check job status
+  ./caravan cluster status
+  ```
 
 <details>
 <summary>Output:</summary>
@@ -172,16 +136,59 @@ podman exec slurmctld squeue
 </details>
 
 
-### **Clean up**
+```bash
+  podman exec slurmctld squeue
+```
+
+<details>
+<summary>Output:</summary>
+hitesh@Mac Caravan %   podman exec slurmctld squeue
+
+     JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+         1       gpu caravan-     root PD       0:00      1 (Nodes required for job are DOWN, DRAINED or reserved for jobs in higher priority partitions)
+</details>
+
+
+---
+
+### 📥 Submit a job
+
+Create a simple job script (see `examples/submit_example.sh`) and submit it:
+
+```bash
+  # submit the example script
+  ./caravan submit examples/submit_example.sh
+
+```
+
+<details>
+<summary>Output:</summary>
+  → submitting examples/submit_example.sh to local Slurm cluster in /Users/hitesh/.caravan/cluster
+  #!/usr/bin/env bash
+  #SBATCH --job-name=caravan-test
+  #SBATCH --output=caravan-test.out
+  #SBATCH --time=00:01:00
+  #SBATCH --ntasks=1
+
+echo "Hello from Caravan job on $(hostname)"
+sleep 5
+
+echo "Done"
+</details>
+
+---
+
+### 💥 Clean up
+Tear down cluster and option to clean mounted volumes as well
 
 ```bash  
-  ./caravan cluster down       # add -v to also remove volumes  
+  ./caravan cluster down      
+  ./caravan cluster down  -v  # Also remove disc volumes  
 ```  
 
 ---
 
-
-## 👨‍💻 DEVELOP
+## 👨‍💻 Development
 
 ###  ⚙️ Install dependencies
 ```bash
@@ -212,7 +219,6 @@ Tests are run as part of CI itself.
     go run .                 # mock
     
 ```
-
 
 ---
 
