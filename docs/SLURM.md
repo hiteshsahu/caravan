@@ -15,6 +15,36 @@ priorities, fairshare, accounting, GRES — is detail hanging off those two jobs
 
 Slurm is a handful of long-running daemons that talk to each other:
 
+
+![](../img/slurm-architecture.jpeg)
+
+### **`slurmctld`**
+> the brain. 
+- One per cluster (two for HA).
+- It owns the queue and every scheduling decision. 
+
+When people say "Slurm is hard to replace," they mean this: 20 years of scheduling logic live here.
+
+
+### **`slurmd`** 
+> Worker 
+-  Runs on *every* compute node.
+- It reports the node's health to the
+  controller and, when told, launches the job — spawning a **`slurmstepd`** that
+  actually manages the job's processes and tears them down after.
+
+### **`slurmdbd`** — optional. 
+> The accounting daemon, backed by a SQL database.
+
+ It  stores job history (`sacct`), and the *associations / QOS / fairshare* that drive
+  limits and priority. 
+ 
+ **Caravan's dev cluster skips it** (`accounting_storage/none`)
+  because squint only reads live state, never history — which removes a whole
+  database and its startup races.
+
+
+
 ```mermaid
 flowchart TB
 
@@ -81,52 +111,6 @@ flowchart TB
     DBD --> DB
 ```
 
-```
-            ┌──────────────────────────────────────────┐
-  clients   │  slurmctld   ← the controller / scheduler  │
- sbatch ───▶│   • holds the job queue + cluster state     │
- squeue ───▶│   • runs the scheduling loop                │
- scontrol──▶│   • decides placement, sends jobs out       │
-            └───────┬───────────────────────┬────────────┘
-                    │ "run job 42 on you"    │ node state, job status
-                    ▼                        ▼
-            ┌──────────────┐         ┌──────────────┐
-            │   slurmd     │   ...   │   slurmd     │   one per compute node
-            │  launches &  │         │  launches &  │
-            │  monitors    │         │  monitors    │
-            │  → slurmstepd│         │  → slurmstepd│   per-job step manager
-            └──────────────┘         └──────────────┘
-
-            ┌──────────────┐
-            │  slurmdbd    │   optional: accounting → MySQL/MariaDB
-            └──────────────┘   (stores job history, limits, QOS, fairshare)
-```
-
-### **`slurmctld`**
-> the brain. 
-- One per cluster (two for HA).
-- It owns the queue and every scheduling decision. 
-
-When people say "Slurm is hard to replace," they mean this: 20 years of scheduling logic live here.
-
-
-### **`slurmd`** 
-> Worker 
--  Runs on *every* compute node.
-- It reports the node's health to the
-  controller and, when told, launches the job — spawning a **`slurmstepd`** that
-  actually manages the job's processes and tears them down after.
-
-### **`slurmdbd`** — optional. 
-> The accounting daemon, backed by a SQL database.
-
- It  stores job history (`sacct`), and the *associations / QOS / fairshare* that drive
-  limits and priority. 
- 
- **Caravan's dev cluster skips it** (`accounting_storage/none`)
-  because squint only reads live state, never history — which removes a whole
-  database and its startup races.
-
 ## munge: why every node trusts every node
 
 Daemons and clients authenticate every message with **munge**.
@@ -140,13 +124,42 @@ start.)
 
 ## The life of a job
 
-```
- sbatch job.sh                    PENDING ──▶ scheduler matches resources ──▶ RUNNING
-     │                               ▲                                          │
-     ▼                               │ Reason: Resources / Priority / …          ▼
- slurmctld enqueues  ────────────────┘                                    COMPLETING
-                                                                                │
-                                                  COMPLETED / FAILED / CANCELLED ◀┘
+
+```mermaid
+flowchart TD
+    A["🚀 sbatch job.sh"]
+    B["🟡 PENDING"]
+    C["🧠 slurmctld<br/>Scheduler"]
+    D["🟢 RUNNING"]
+    E["🟠 COMPLETING"]
+    F["✅ COMPLETED"]
+    G["❌ FAILED"]
+    H["⛔ CANCELLED"]
+
+    A -->|Submit| B
+    B -->|Queued| C
+    C -->|Resources Available| D
+    D --> E
+    E --> F
+    E --> G
+    E --> H
+
+    B -.->|"Waiting:<br/>Resources<br/>Priority<br/>QOS<br/>Dependencies"| C
+
+    classDef pending fill:#FFF3B0,stroke:#E6A700,color:#000;
+    classDef running fill:#C8F7C5,stroke:#2E7D32,color:#000;
+    classDef complete fill:#BBDEFB,stroke:#1565C0,color:#000;
+    classDef failed fill:#FFCDD2,stroke:#C62828,color:#000;
+    classDef cancel fill:#E0E0E0,stroke:#616161,color:#000;
+    classDef scheduler fill:#D1C4E9,stroke:#512DA8,color:#000;
+
+    class B pending
+    class C scheduler
+    class D running
+    class E pending
+    class F complete
+    class G failed
+    class H cancel
 ```
 
 1. **Submit.** `sbatch` sends a batch script + a resource request to `slurmctld`,
