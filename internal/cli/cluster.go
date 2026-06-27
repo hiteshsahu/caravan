@@ -13,7 +13,9 @@ var clusterCmd = &cobra.Command{
 var clusterUpCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Build and start the cluster (controller + 2 fake-GPU nodes)",
-	RunE:  func(c *cobra.Command, _ []string) error { return cluster.Up() },
+	RunE: func(c *cobra.Command, _ []string) error {
+		return cluster.Up()
+	},
 }
 
 var clusterDownCmd = &cobra.Command{
@@ -28,7 +30,9 @@ var clusterDownCmd = &cobra.Command{
 var clusterStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show container and Slurm node state",
-	RunE:  func(c *cobra.Command, _ []string) error { return cluster.Status() },
+	RunE: func(c *cobra.Command, _ []string) error {
+		return cluster.Status()
+	},
 }
 
 func init() {

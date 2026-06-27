@@ -7,8 +7,8 @@
 ### Purpose
 Slurm is powerful but a chore to operate and submit to. 
 
-Caravan is a single binary that carries a GPU Slurm cluster *inside it* and makes it a one-liner to bring up —
-then (next) submit jobs, track experiments, and rerun workloads.
+Caravan is a single binary that carries a GPU Slurm cluster *inside it* and makes it a one-liner to bring up,
+submit jobs to, and (next) track experiments and rerun workloads.
 
 Its completing project to:
 - [squint](https://github.com/hiteshsahu/squint) watching the queue and 
@@ -91,19 +91,22 @@ podman machine start
 
 ### 2. Using Local Binary
 
+
+### Build Binary
 Build the binary after changes in Go files:
 
 ```bash
 go build -o caravan .
 ```
 
+### Start Cluster
 Start the cluster from the local binary:
 
 ```bash
 ./caravan cluster up
 ```
 
-`caravan cluster up` writes an embedded Slurm scaffold to `~/.caravan/cluster` and runs `docker compose` against it.
+`caravan cluster up` writes an embedded Slurm scaffold to `~/.caravan/cluster` and runs `docker`/`podman compose` against it.
 
 You can override the scaffold location with `CARAVAN_DIR`:
 
@@ -113,28 +116,63 @@ CARAVAN_DIR=/tmp/caravan/cluster ./caravan cluster up
 
 The two compute nodes advertise `gpu:4` each as **fake, count-only GPUs** — real GPU scheduling, no hardware needed (no `nvidia-smi` telemetry).
 
-**Check status**
+
+
+### **Submit a job**
+
+Create a simple job script (see `examples/submit_example.sh`) and submit it:
 
 ```bash
+# start the cluster first
+./caravan cluster up
+
+# submit the example script
+./caravan submit examples/submit_example.sh
+
+```
+
+
+<details>
+<summary>Output:</summary>
+  → submitting examples/submit_example.sh to local Slurm cluster in /Users/hitesh/.caravan/cluster
+  #!/usr/bin/env bash
+  #SBATCH --job-name=caravan-test
+  #SBATCH --output=caravan-test.out
+  #SBATCH --time=00:01:00
+  #SBATCH --ntasks=1
+
+echo "Hello from Caravan job on $(hostname)"
+sleep 5
+
+echo "Done"
+</details>
+
+### **Check Status**
+
+```bash
+
+# check job status
 ./caravan cluster status
+
+podman exec slurmctld squeue
 ```
 
-**Result:**
+<details>
+<summary>Output:</summary>
 
-```text
+    hitesh@Mac Caravan % ./caravan cluster status
+    CONTAINER ID  IMAGE                           COMMAND     CREATED         STATUS                 PORTS       NAMES
+    ce05d9f1bbd9  localhost/caravan-slurm:latest  slurmd      15 seconds ago  Up 1 second (healthy)              c1
+    0ef798e4b97c  localhost/caravan-slurm:latest  slurmd      15 seconds ago  Up 1 second (healthy)              c2
+    2f3e0982f69c  localhost/caravan-slurm:latest  slurmctld   14 seconds ago  Up 14 seconds                      slurmctld
 
-hitesh@Mac Caravan % ./caravan cluster status
-CONTAINER ID  IMAGE                           COMMAND     CREATED         STATUS                 PORTS       NAMES
-ce05d9f1bbd9  localhost/caravan-slurm:latest  slurmd      15 seconds ago  Up 1 second (healthy)              c1
-0ef798e4b97c  localhost/caravan-slurm:latest  slurmd      15 seconds ago  Up 1 second (healthy)              c2
-2f3e0982f69c  localhost/caravan-slurm:latest  slurmctld   14 seconds ago  Up 14 seconds                      slurmctld
+    PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
+    gpu*         up   infinite      2    unk c[1-2]
+                                c2
+</details>
 
-PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
-gpu*         up   infinite      2    unk c[1-2]
-                            c2
-```
 
-**Clean up**
+### **Clean up**
 
 ```bash  
   ./caravan cluster down       # add -v to also remove volumes  
@@ -186,9 +224,15 @@ Tests are run as part of CI itself.
   ├── internal/
   │   ├── cli/                 # cobra commands
   │   │   ├── root.go
-  │   │   └── cluster.go       # caravan cluster up|down|status
+  │   │   ├── cluster.go       # caravan cluster up|down|status
+  │   │   └── submit.go        # caravan submit <script.sh>
   │   └── cluster/
-  │       ├── cluster.go       # extract scaffold + docker compose
+  │       ├── engine.go        # Engine interface + DockerEngine/PodmanEngine
+  │       ├── compose.go       # compose file path + project name
+  │       ├── extract.go       # embedded scaffold + extraction
+  │       ├── status.go        # Up/Down/Status
+  │       ├── submit.go        # Submit — streams a script into sbatch
+  │       ├── util.go          # process-running helpers
   │       └── assets/          # the GPU Slurm cluster, embedded in the binary
   │           ├── Dockerfile · entrypoint.sh
   │           ├── docker-compose.yml
@@ -197,7 +241,7 @@ Tests are run as part of CI itself.
 
 The cluster definition is embedded with `//go:embed`, so the binary is
 self-contained — there's no separate cluster repo to clone. `caravan cluster up`
-extracts it and runs it.
+extracts it and runs it via a `docker`/`podman` `Engine`.
 
 ----
 
@@ -205,10 +249,10 @@ extracts it and runs it.
 
 Caravan grows from "runs a cluster" to "runs your work on it."
 
-- **cluster** *(here)* — `up` / `down` / `status`. Docker today; cloud / bare-metal
-  backends later, behind the same interface.
-- **submit** — `caravan submit job.yaml` → generates an sbatch script → submits to
-  the cluster → records the job. `status` / `logs` to follow it.
+- **cluster** *(here)* — `up` / `down` / `status`, behind a single `Engine` interface
+  implemented by Docker and Podman today; cloud / bare-metal backends later.
+- **submit** *(here)* — `caravan submit script.sh` streams the script straight into
+  `sbatch` on the controller. `logs` to follow it; recording/rerun next.
 - **rerun** — re-launch a past job by id, reproducibly.
 - **exp** — group runs into experiments and compare them.
 
