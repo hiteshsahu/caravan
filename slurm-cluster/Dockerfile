@@ -17,6 +17,14 @@ RUN install -d -o munge -g munge -m 0700 /etc/munge /var/lib/munge /var/log/mung
 
 RUN install -d -m 0755 /var/spool/slurmctld /var/spool/slurmd /var/log/slurm /run/slurm
 
+# Fake GPU "devices" for gres.conf's File= lines — see slurm-cluster/gres.conf
+# for why these need to exist at all. Harmless clones of /dev/null (1:3).
+RUN install -d -m 0755 /var/lib/slurm/fakegpu \
+    && mknod /var/lib/slurm/fakegpu/gpu0 c 1 3 \
+    && mknod /var/lib/slurm/fakegpu/gpu1 c 1 3 \
+    && mknod /var/lib/slurm/fakegpu/gpu2 c 1 3 \
+    && mknod /var/lib/slurm/fakegpu/gpu3 c 1 3
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

@@ -423,7 +423,8 @@ Tests are run as part of CI itself.
   │   └── docker-compose.gpu.yml · slurm.gpu.conf · gres.gpu.conf  # CARAVAN_GPU=real overlay
   └── workloads/                # example job scripts
       ├── submit_example.sh
-      └── gpu_example.sh
+      ├── gpu_example.sh
+      └── long_running_example.sh  # holds gpu:1 for 5 min — good for watching squint live
 ```
 
 
