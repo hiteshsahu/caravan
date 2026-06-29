@@ -3,91 +3,141 @@
 > ### Make it easy to spin SLURM Cluster and submit your HPC workloads to it.
 
 ![Caravan COver](./img/cover.jpg)
-
-[![🛠️ Build & Test](https://github.com/hiteshsahu/Caravan/actions/workflows/build-test.yaml/badge.svg)](https://github.com/hiteshsahu/Caravan/actions/workflows/build-test.yaml)
-[![🚀 Release](https://github.com/hiteshsahu/Caravan/actions/workflows/release.yaml/badge.svg)](https://github.com/hiteshsahu/Caravan/actions/workflows/release.yaml)
-![Release](https://img.shields.io/github/v/release/hiteshsahu/caravan)
-
-
 ![License](https://img.shields.io/github/license/hiteshsahu/caravan)
 ![Downloads](https://img.shields.io/github/downloads/hiteshsahu/caravan/total)
 ![GitHub stars](https://img.shields.io/github/stars/hiteshsahu/caravan?style=social)
 
+#### Pipeline
+
+[![🛠️ Build & Test](https://github.com/hiteshsahu/Caravan/actions/workflows/build-test.yaml/badge.svg)](https://github.com/hiteshsahu/Caravan/actions/workflows/build-test.yaml)
+[![🚀 Release](https://github.com/hiteshsahu/Caravan/actions/workflows/release.yaml/badge.svg)](https://github.com/hiteshsahu/Caravan/actions/workflows/release.yaml)
+
+#### Release
+
+![GoReleaser](https://img.shields.io/badge/Built%20with-GoReleaser-blue) ![Release](https://img.shields.io/github/v/release/hiteshsahu/caravan)
+
+### Install now
+
+MacOS
+
+```bash
+  # Quick install
+  go install github.com/hiteshsahu/caravan@latest
+  
+  # Edit your .zshrc:
+  nano ~/.zshrc
+  # Add this line:
+  export PATH=$PATH:$HOME/go/bin
+  # Save and reload:
+  source ~/.zshrc
+
+  caravan                   # Help
+  caravan cluster up        # start SLURM
+  caravan cluster status    # check status
+  caravan submit workloads/submit_example.sh   # Submit JOBS
+  
+  # GPU Load: need real cuda GPU + Linux/WSL2  
+  CARAVAN_GPU=real ./caravan submit workloads/gpu_example.sh
+
+  caravan cluster down      # Tear down
+
+```
+
+Support Upto 1 GPU in c1 compute node to run workloads on common workstation with 1 GPU installed over PIC. 
+
+Can be extended to add more compute nodes for multi GPU setup
+
+![](./img/gpu-setup.webp)
+
+Tested on Windows + WSL2 + RTX 4060
+
+---
+
 ## Why Caravan
 
-Developing Slurm workloads usually requires access to an HPC cluster. Slurm is powerful but a chore to operate and submit to.
+Developing Slurm workloads usually requires access to an HPC cluster. Slurm is powerful but a chore to operate and
+submit to.
 
-Caravan makes it simple by bundling a complete Slurm cluster into a single CLI so you can develop, test and debug jobs locally.
+Caravan makes it simple by bundling a complete Slurm cluster into a single CLI so you can develop, test and debug jobs
+locally.
 
-It uses Docker or Podman behind the scenes and works with fake GPUs, making it ideal for CI, workshops and local development.
+It uses Docker or Podman behind the scenes and works with fake GPUs, making it ideal for CI, workshops and local
+development.
 
-The cluster definition is embedded with `//go:embed`, so the binary is self-contained — there's no separate cluster repo to clone. `caravan cluster up` extracts it and runs it via a `docker`/`podman` `Engine`.
+The cluster definition is embedded with `//go:embed`, so the binary is self-contained — there's no separate cluster repo
+to clone. `caravan cluster up` extracts it and runs it via a `docker`/`podman` `Engine`.
 
 > Caravan **uses** Slurm — it doesn't replace it. Slurm stays the scheduler;
 
 > Caravan is the control plane and easier developer experience around it.
 
 ```mermaid
+
 flowchart LR
-  subgraph CaravanCLI["🐫 Caravan (CLI)"]
-    CLI["caravan cluster / submit / status"]
-  end
+subgraph CaravanCLI["🐫 Caravan (CLI)"]
+CLI["caravan<br/>cluster · submit · status"]
+end
 
-  CLI -->|"sbatch"| CTL
-  CLI -->|"squeue · scontrol · sinfo"| CTL
+    CLI -->|"sbatch"| CTL
+    CLI -->|"squeue · scontrol · sinfo"| CTL
 
-  subgraph Slurm["Slurm cluster 🥤 <br/>— embedded, no accounting DB"]
-  
-    CTL["slurmctld 🧠<br/>controller & scheduler"]
-    CTL --> N1["slurmd 🖥<br/>compute node"]
-    CTL --> N2["slurmd 🖥ִׄ<br/>compute node"]
-    N1 --> S1["slurmstepd → GPU 🧮"]
-    N2 --> S2["slurmstepd → GPU 🧮"]
-  end
+    subgraph Slurm["Slurm Cluster<br/>Embedded, no accounting DB"]
+        CTL["slurmctld 🧠<br/>Controller & Scheduler"]
 
-  N1 -. "DCGM / nvidia-smi" .-> OBS["squint 🦝 · gpu-lens ֎"]
-  N2 -. "DCGM / nvidia-smi" .-> OBS
+        CTL --> N1["slurmd 🖥️<br/>Compute Node"]
+        CTL --> N2["slurmd 🖥️<br/>Compute Node"]
 
-  classDef ctl fill:#EEEDFE,stroke:#534AB7,color:#26215C;
-  classDef compute fill:#E1F5EE,stroke:#0F6E56,color:#04342C;
-  classDef obs fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A,stroke-dasharray:5 4;
-  class CTL ctl;
-  class N1,N2,S1,S2 compute;
-  class OBS obs;
+        N1 --> S1["slurmstepd<br/>GPU Job"]
+        N2 --> S2["slurmstepd<br/>GPU Job"]
+    end
+
+    N1 -. "DCGM / nvidia-smi" .-> OBS["🦝 squint<br/>gpu-lens"]
+    N2 -. "DCGM / nvidia-smi" .-> OBS
+
+    classDef ctl fill:#EEEDFE,stroke:#534AB7,color:#26215C;
+    classDef compute fill:#E1F5EE,stroke:#0F6E56,color:#04342C;
+    classDef obs fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A,stroke-dasharray:5 4;
+
+    class CTL ctl;
+    class N1,N2,S1,S2 compute;
+    class OBS obs;
 ```
 
 Its completing project to:
+
 - [squint](https://github.com/hiteshsahu/squint): TUI Dashboard to check workload & squatting GPUs
 - [gpu-lens](https://github.com/hiteshsahu/gpu-lens) : Drop-in GPU + scheduler observability for clusters(SLURM+K8)
 
-
 ---
 
+## ⚡ Get Started
 
-## ⚡ Prerequisites
+### 📟 Requires Go
 
-### 📟 Requires **Go 1.22+**
+![Go Version](https://img.shields.io/github/go-mod/go-version/hiteshsahu/caravan)
 
-  > choco install golang
+MacOS
+> brew install go
 
-![Go Version](https://img.shields.io/github/go-mod/go-version/hiteshsahu/caravan) ![GoReleaser](https://img.shields.io/badge/Built%20with-GoReleaser-blue)
+Windows
+> choco install golang
 
-
-  More detail on this [Medium Post](https://medium.com/@hiteshkrsahu/installing-go-on-windows-the-5-minute-guide-and-the-gotchas-nobody-mentions-878eb3ea2277)
-  
-  **Slurm** will be installed as Container Image
+See [Medium Post](https://medium.com/@hiteshkrsahu/installing-go-on-windows-the-5-minute-guide-and-the-gotchas-nobody-mentions-878eb3ea2277)
+for more detail installing go on Windows
 
 ### 🐳 Container engine
-Caravan can work with both `Docker` or `Podman`, it auto-detects (`Docker` first, then`Podman`) and uses the matching Compose.
 
-On Podman it uses `podman-compose` if installed, otherwise it will try to use `podman compose`.
+> Caravan can work with both `Docker` or `Podman`
+
+- it auto-detects (`Docker` first, then`Podman`) and uses the matching Compose.
+- On Podman it uses `podman-compose` if installed, otherwise it will try to use `podman compose`.
 
 You can Force Podman explicitly:
 
-```bash
-CARAVAN_ENGINE=podman caravan cluster up
-CARAVAN_COMPOSE="podman compose" caravan cluster up
-```
+  ```bash
+  CARAVAN_ENGINE=podman caravan cluster up
+  CARAVAN_COMPOSE="podman compose" caravan cluster up
+  ```
 
 On macOS make sure the Podman VM is running first:
 
@@ -95,9 +145,9 @@ On macOS make sure the Podman VM is running first:
 podman machine start
 ```
 
-##  OS Support
+## OS Support
 
-Recommended Platform
+**Recommended Platform**
 
 | Environment       | Recommendation                                              |
 |-------------------|-------------------------------------------------------------|
@@ -106,62 +156,79 @@ Recommended Platform
 | 🍎 macOS          | ⭐⭐⭐⭐ Great for UI and mock-mode development                 |
 | 🪟 Native Windows | ⭐⭐⭐ Good for CLI/UI development; use WSL2 for Linux tooling |
 
-
 ### Slurm + Caravan OS Compatibility
 
-| Feature                                    | Linux | Windows + WSL2 |      Windows      |       macOS       |
-|--------------------------------------------|:-----:|:--------------:|:-----------------:|:-----------------:|
-| Build                                      |   ✅   |       ✅        |         ✅         |         ✅         |
-| Run mock mode                              |   ✅   |       ✅        |         ✅         |         ✅         |
-| TUI development                            |   ✅   |       ✅        |         ✅         |         ✅         |
-| Unit tests                                 |   ✅   |       ✅        |         ✅         |         ✅         |
-| Integration tests (mock)                   |   ✅   |       ✅        |         ✅         |         ✅         |
-| Live Slurm (`squeue`, `sacct`, `scontrol`) |   ✅   |       ✅        | ⚠️ Remote cluster | ⚠️ Remote cluster |
-| DCGM GPU metrics                           |   ✅   |       ✅        |         ❌         |         ❌         |
-| `nvidia-smi` GPU metrics                   |   ✅   |       ✅        |         ✅         |    ⚠️ Limited     |
-| Full end-to-end testing                    |   ✅   |       ⚠️       |         ❌         |         ❌         |
-
+| Feature                                    | Linux | Windows + WSL2 |        Windows         |         macOS          |
+|--------------------------------------------|:-----:|:--------------:|:----------------------:|:----------------------:|
+| Build                                      |   ✅   |       ✅        |           ✅            |           ✅            |
+| Run mock mode                              |   ✅   |       ✅        |           ✅            |           ✅            |
+| Live Slurm (`squeue`, `sacct`, `scontrol`) |   ✅   |       ✅        | ⚠️ Slurm not Supported | ⚠️ Slurm not Supported |
+| DCGM GPU metrics                           |   ✅   |       ✅        |           ❌            |           ❌            |
+| `nvidia-smi` GPU metrics                   |   ✅   |       ✅        |           ✅            |       ⚠️ Limited       |
+| Full end-to-end testing                    |   ✅   |       ⚠️       |           ❌            |           ❌            |
 
 Notes
--  Live Slurm support in WSL2 works if you have access to a remote Linux Slurm cluster (via SSH) or a local Slurm installation inside WSL2.
--  DCGM requires machine with NVIDIA GPU with CUDA support and the NVIDIA WSL driver stack.
--  nvidia-smi is only available on Windows and inside WSL2 when using the NVIDIA WSL GPU drivers.
+- Live Slurm support in WSL2 works if you have access to a remote Linux Slurm cluster (via SSH) or a local Slurm
+  installation inside WSL2.
+- DCGM requires machine with NVIDIA GPU with CUDA support and the NVIDIA WSL driver stack.
+- nvidia-smi is only available on Windows and inside WSL2 when using the NVIDIA WSL GPU drivers.
 
 ---
 
 ## Start Your Caravan 🐪🐫
+> Install the CLI for as described in "Install Now" section
 
 **Once you have CLI ready, you can start cluster and submit jobs**
 
 ![Caravan Batch](./img/illustration.jpeg)
 
-###  ✨ 1. Using pre compile released Binary (for production)
+### ✨ 1. Using pre compile released Binary (for production)
 
 Quick start with released CLI binary
 
 **On macOS**
 
 ```bash
-  go install github.com/hiteshsahu/caravan@latest
-  caravan
   
   caravan cluster up        # build + start (controller + 2 fake-GPU nodes)
   caravan cluster down      # stop (-v to also wipe volumes)
   caravan cluster status    # container state + sinfo
   caravan submit <script>   # stream a script into sbatch on the controller
 ```
+**Note:**
+- The two compute nodes  `c1`, `c2` advertise `gpu:4` each as **fake, count-only GPUs**
+- Real GPU scheduling, no hardware needed (no `nvidia-smi` telemetry) by default.
 
-### 
+
+###  🎮 Using a real GPU
+
+If you have an NVIDIA GPU with Docker GPU support enabled, opt in with
+
+`CARAVAN_GPU=real`
+- `c1` compute node gets the real GPU passed through
+  (via NVIDIA Container Toolkit, no CUDA base image needed), while
+- `c2` keeps
+  the fake GPUs since most machines only have one physical GPU to give.
+
+🐧 **On Linux / Windows (Git Bash)**
+
+```bash
+  CARAVAN_GPU=real ./caravan cluster up
+  CARAVAN_GPU=real ./caravan submit workloads/gpu_example.sh
+```
+
+
+###  
 
 ### ⚙️ 2. Build Locally (for devs)
+> If you prefer building CLI on your own you can build binary locally
 
-Quick start with local binary. 
-
-Note: Replace `caravan` with `./caravan` and you can use them for local CLI
+Note: Replace `caravan` with `./caravan` and you can use same commands for local CLI
 
 📦 **On macOS**
 
 ```bash
+  # Build CLI locally
   go build -o caravan .
   ./caravan
   
@@ -177,6 +244,7 @@ Note: Replace `caravan` with `./caravan` and you can use them for local CLI
 **Note:** for PowerShell users: use `./caravan.exe` instead of `./caravan`.
 
 ```bash
+   # Build CLI locally
    go build -o caravan.exe .
    ./caravan.exe --help
   
@@ -188,13 +256,13 @@ Note: Replace `caravan` with `./caravan` and you can use them for local CLI
 
 ---
 
-
 ## How it works
 
-### ▶️ Starting Slurm Cluster 
+### ▶️ Starting Slurm Cluster
 
-Writes an embedded Slurm scaffold to 
-- MacOS:   `~/.caravan/cluster` 
+Writes an embedded Slurm scaffold to
+
+- MacOS:   `~/.caravan/cluster`
 - Windows: `%USERPROFILE%\.caravan\cluster`
 
 and runs `docker`/`podman compose` against it.
@@ -210,23 +278,6 @@ You can override scafold to your desired directory by passing `CARAVAN_DIR`
   CARAVAN_DIR=/tmp/caravan/cluster ./caravan cluster up
 ```
 
-
-- The two compute nodes advertise `gpu:4` each as **fake, count-only GPUs**
-- Real GPU scheduling, no hardware needed (no `nvidia-smi` telemetry) by default.
-
-#### 🎮 Using a real GPU
-
-If you have an NVIDIA GPU with Docker GPU support enabled, opt in with
-`CARAVAN_GPU=real`: the `c1` compute node gets the real GPU passed through
-(via NVIDIA Container Toolkit, no CUDA base image needed), while `c2` keeps
-the fake GPUs since most machines only have one physical GPU to give.
-
-🐧 **On Linux / Windows (Git Bash)**
-
-```bash
-  CARAVAN_GPU=real ./caravan cluster up
-  CARAVAN_GPU=real ./caravan submit workloads/gpu_example.sh
-```
 
 ⊞ **On Windows (PowerShell)**
 
@@ -269,12 +320,12 @@ Print container state, then `sinfo`
     PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
     gpu*         up   infinite      2    unk c[1-2]
                                 c2
-</details>
 
+</details>
 
 ### Check logs slurmctld squeue
 
- **With Podman**
+**With Podman**
 
 ```bash
   podman exec slurmctld squeue
@@ -300,7 +351,6 @@ Print container state, then `sinfo`
   docker exec c1 cat /var/log/slurm/slurmd.log
 ```
 
-
 <details>
 <summary>Output:</summary>
 
@@ -318,7 +368,6 @@ Print container state, then `sinfo`
     [2026-06-27T19:39:18.609] [4.batch] done with step
 
 </details>
-
 
 
 ---
@@ -356,6 +405,7 @@ requests `--gres=gpu:1` and prints actual `nvidia-smi` output.
 ---
 
 ### 💥 Tear Down Slurm Cluster
+
 Tear down cluster and option to clean mounted volumes as well
 
 ```bash  
@@ -367,13 +417,14 @@ Tear down cluster and option to clean mounted volumes as well
 
 ## 👨‍💻 Development
 
-###  ⚙️ Install dependencies
+### ⚙️ Install dependencies
+
 ```bash
     # Install dependencies
     go mod tidy
 ```
 
-###  🧪 Build & Test
+### 🧪 Build & Test
 
 Tests are run as part of CI itself.
 
@@ -427,7 +478,6 @@ Tests are run as part of CI itself.
       └── long_running_example.sh  # holds gpu:1 for 5 min — good for watching squint live
 ```
 
-
 ----
 
 ## 🗺️ Roadmap
@@ -447,5 +497,7 @@ the execution target later doesn't touch the CLI above it.
 ---
 
 ## License
-*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*
+
+*© 2026 [Hitesh Kumar Sahu](https://hiteshsahu.com) · Licensed
+under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)*
 
